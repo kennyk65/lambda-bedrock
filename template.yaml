@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sam-app
+
+Parameters:
+  AppBucketName:
+    Type: String
+    Default: kk-app-bucket-1022 
+    Description: "REQUIRED: Unique S3 bucket name to use for the app."
+
+  ModelId:
+    Type: String
+    Default: anthropic.claude-3-sonnet-20240229-v1:0 
+    Description: "REQUIRED: The Bedrock model to use.  MUST BE ENABLED in this region."
+
+
+Resources:
+
+# alter the resource below, add an environment variable to the function:
+
+  S3JsonLoggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: hello_world/
+      Handler: app.lambda_handler
+      Runtime:  python3.13
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 60
+      Environment:
+        Variables:
+          PROMPT_KEY_NAME: prompt.txt
+          BUCKET_NAME: !Ref AppBucketName
+          MODEL_ID: !Ref ModelId
+      Policies:
+      - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      - S3ReadPolicy:
+          BucketName: !Ref AppBucketName
+      Events:
+        S3NewObjectEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref AppBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: ".txt"
+  AppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref AppBucketName
+
+
