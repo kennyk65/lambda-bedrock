@@ -1,9 +1,59 @@
-# sam-app-python
+# Lambda Bedrock
+
+This SAM-based application demonstrates how to work with S3, Lambda, and Bedrock-hosted models to perform some basic generative AI tasks.
+
+When a file is uploaded to the specified bucket, the Lambda function will read it, append it to the end of a flexible prompt, call an Amazon Bedrock model, and print the results to the log.
+ 
+## Requirements
+* Install SAM local
+* AWS Account
+
+## Usage
+* Within your AWS account, go to Amazon Bedrock and __enable__ the model(s) you wish to use.  For this demo I've enabled the _anthropic.claude-3-sonnet-20240229-v1:0_ model in us-west-2, but you can play with any other text models enabled in any region.
+* Install the application with `sam deploy`.  You will probably need to override the bucket name I've chosen, and perhaps the model if you've chosen something different.
+* Upload a `prompt.txt` file to the newly created S3 bucket.  Here is a suggestion:
+
+```
+Please evaluate the correctness of the following assessment of the weather.  Use the following examples to guide your analysis.  Your response should be a SINGLE WORD indicating if the assessment is correct or incorrect.
+
+EXAMPLES:
+
+REPORT:  The current weather is 78 degrees and mostly sunny
+ASSESSMENT:  Pleasant
+ACCURACY OF ASSESSMENT:  Correct
+
+REPORT:  A winter storm advisory is in effect, motorists are urged not to travel
+ASSESSMENT: Harsh, Dangerous
+ACCURACY OF ASSESSMENT:  Correct
+
+REPORT:  A fresh layer of snow has blanketed the resort, which should permit powder skiing.
+ASSESSMENT: Unpleasant
+ACCURACY OF ASSESSMENT:  Incorrect
+
+
+Analyze the following:
+
+```
+
+* Upload a test file to the S3 bucket, something like:
+
+```
+REPORT:  Heavy fog will be encountered early, followed by heavy ran and possible hail.
+ASSESSMENT:  foul
+```
+  Open CloudWatch logs to find the log output.
+
+* Test the application locally (if you like) with `sam local invoke --event events/event.json`. (The test assumes you have deployed the application to install the S3 bucket).  Make sure the name of the S3 object defined in event.json matches the file you just uploaded.
+
+* Test the application on AWS by uploading other test files modeled like the example above. 
+
+---
+
 
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
-- hello_world - Code for the application's Lambda function.
-- events - Invocation events that you can use to invoke the function.
+- hello_world - Python Code for the application's Lambda function.
+- events - Invocation events that you can use to invoke the function, such as `sam local invoke --event events/event.json`.
 - tests - Unit tests for the application code. 
 - template.yaml - A template that defines the application's AWS resources.
 
@@ -34,15 +84,6 @@ To use the SAM CLI, you need the following tools.
 * [Python 3 installed](https://www.python.org/downloads/)
 * Docker - [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community)
 
-To build and deploy your application for the first time, run the following in your shell:
-
-```bash
-sam build --use-container
-sam deploy --guided
-```
-
-The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
-
 * **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
 * **AWS Region**: The AWS region you want to deploy your app to.
 * **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
@@ -56,7 +97,7 @@ You can find your API Gateway Endpoint URL in the output values displayed after 
 Build your application with the `sam build --use-container` command.
 
 ```bash
-sam-app-python$ sam build --use-container
+sam build --use-container
 ```
 
 The SAM CLI installs dependencies defined in `hello_world/requirements.txt`, creates a deployment package, and saves it in the `.aws-sam/build` folder.
@@ -66,61 +107,16 @@ Test a single function by invoking it directly with a test event. An event is a 
 Run functions locally and invoke them with the `sam local invoke` command.
 
 ```bash
-sam-app-python$ sam local invoke HelloWorldFunction --event events/event.json
+sam-app-python$ sam local invoke --event events/event.json
 ```
 
-The SAM CLI can also emulate your application's API. Use the `sam local start-api` to run the API locally on port 3000.
-
-```bash
-sam-app-python$ sam local start-api
-sam-app-python$ curl http://localhost:3000/
-```
-
-The SAM CLI reads the application template to determine the API's routes and the functions that they invoke. The `Events` property on each function's definition includes the route and method for each path.
-
-```yaml
-      Events:
-        HelloWorld:
-          Type: Api
-          Properties:
-            Path: /hello
-            Method: get
-```
-
-## Add a resource to your application
-The application template uses AWS Serverless Application Model (AWS SAM) to define application resources. AWS SAM is an extension of AWS CloudFormation with a simpler syntax for configuring common serverless application resources such as functions, triggers, and APIs. For resources not included in [the SAM specification](https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md), you can use standard [AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html) resource types.
-
-## Fetch, tail, and filter Lambda function logs
-
-To simplify troubleshooting, SAM CLI has a command called `sam logs`. `sam logs` lets you fetch logs generated by your deployed Lambda function from the command line. In addition to printing the logs on the terminal, this command has several nifty features to help you quickly find the bug.
-
-`NOTE`: This command works for all AWS Lambda functions; not just the ones you deploy using SAM.
-
-```bash
-sam-app-python$ sam logs -n HelloWorldFunction --stack-name "sam-app-python" --tail
-```
-
-You can find more information and examples about filtering Lambda function logs in the [SAM CLI Documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-logging.html).
-
-## Tests
-
-Tests are defined in the `tests` folder in this project. Use PIP to install the test dependencies and run tests.
-
-```bash
-sam-app-python$ pip install -r tests/requirements.txt --user
-# unit test
-sam-app-python$ python -m pytest tests/unit -v
-# integration test, requiring deploying the stack first.
-# Create the env variable AWS_SAM_STACK_NAME with the name of the stack we are testing
-sam-app-python$ AWS_SAM_STACK_NAME="sam-app-python" python -m pytest tests/integration -v
-```
 
 ## Cleanup
 
-To delete the sample application that you created, use the AWS CLI. Assuming you used your project name for the stack name, you can run the following:
+The SAM application generates costs only when it is in use; if no files are being processed there are no charges.  To delete the sample application that you created, use the AWS CLI. Assuming you used your project name for the stack name, you can run the following:
 
 ```bash
-sam delete --stack-name "sam-app-python"
+sam delete 
 ```
 
 ## Resources

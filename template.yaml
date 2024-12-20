@@ -19,7 +19,7 @@ Resources:
 
 # alter the resource below, add an environment variable to the function:
 
-  S3JsonLoggerFunction:
+  MainFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: hello_world/
